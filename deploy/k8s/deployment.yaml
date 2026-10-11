@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: APPNAME
+  namespace: APPNAMESPACE
+  labels:
+    app: APPNAME
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: APPNAME
+  template:
+    metadata:
+      labels:
+        app: APPNAME
+    spec:
+      containers:
+        - name: APPNAME
+          # The tag is bumped automatically by .github/workflows/release.yml.
+          image: ghcr.io/OWNER/APPNAME:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: APP_PORT
+          readinessProbe:
+            httpGet:
+              path: /
+              port: APP_PORT
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: APP_PORT
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"

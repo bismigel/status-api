@@ -1,0 +1,13 @@
+.git
+.gitignore
+.github
+node_modules
+.env
+.env.*
+*.log
+deploy
+README.md
+AGENTS.md
+scripts
+Dockerfile
+.dockerignore

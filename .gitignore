@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+!.env.example
+*.log
+.DS_Store
+
+# Build output
+/dist
+/build
+/public
+/result
