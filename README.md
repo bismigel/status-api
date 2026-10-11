@@ -1,4 +1,4 @@
-# APPNAME
+# status-api
 
 Template app for the Bakuran homelab. Everything needed to build and deploy is
 already wired: **CI → GHCR → ArgoCD**. You write the app; this repo handles the rest.
@@ -13,7 +13,7 @@ already wired: **CI → GHCR → ArgoCD**. You write the app; this repo handles 
 3. Replace the placeholder in `app/` and the `Dockerfile` with your real app.
 4. Push to `main` → CI builds an image, pushes to GHCR, and bumps the tag in
    `deploy/k8s/deployment.yaml`.
-5. Ask ArgoCD to deploy it by adding `applications/APPNAME.yaml` in
+5. Ask ArgoCD to deploy it by adding `applications/status-api.yaml` in
    **`bakuran-gitops`** (see "Register with ArgoCD" below).
 
 ## What's pre-wired
@@ -28,13 +28,13 @@ already wired: **CI → GHCR → ArgoCD**. You write the app; this repo handles 
 
 ## Register with ArgoCD
 
-In `bakuran-gitops`, add `applications/APPNAME.yaml`:
+In `bakuran-gitops`, add `applications/status-api.yaml`:
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: APPNAME
+  name: status-api
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -47,7 +47,7 @@ spec:
     path: deploy/k8s
   destination:
     server: https://kubernetes.default.svc
-    namespace: APPNAMESPACE
+    namespace: apps
   syncPolicy:
     automated: { prune: true, selfHeal: true }
     syncOptions: [CreateNamespace=true]

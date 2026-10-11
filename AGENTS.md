@@ -7,12 +7,12 @@ agent is asked to build/change/deploy the app here, follow these rules.
 
 ```
 app/                    # your application source (replace the placeholder)
-Dockerfile              # builds the container image (must expose $APP_PORT)
+Dockerfile              # builds the container image (must expose $8080)
 deploy/k8s/             # kustomize manifests ArgoCD applies
   ├── namespace.yaml
   ├── deployment.yaml    # image tag is bumped by CI — DO NOT hand-edit
   ├── service.yaml
-  ├── ingress.yaml       # host = APP_DOMAIN
+  ├── ingress.yaml       # host = status.ciceley.cc
   ├── sealed-secret.yaml # (optional) secrets
   └── kustomization.yaml
 .github/workflows/

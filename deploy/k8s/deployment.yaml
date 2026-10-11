@@ -1,37 +1,37 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: APPNAME
-  namespace: APPNAMESPACE
+  name: status-api
+  namespace: apps
   labels:
-    app: APPNAME
+    app: status-api
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: APPNAME
+      app: status-api
   template:
     metadata:
       labels:
-        app: APPNAME
+        app: status-api
     spec:
       containers:
-        - name: APPNAME
+        - name: status-api
           # The tag is bumped automatically by .github/workflows/release.yml.
-          image: ghcr.io/OWNER/APPNAME:latest
+          image: ghcr.io/prawnfarmerdev/status-api:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: APP_PORT
+            - containerPort: 8080
           readinessProbe:
             httpGet:
               path: /
-              port: APP_PORT
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /
-              port: APP_PORT
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10
           resources:

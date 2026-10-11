@@ -1,18 +1,18 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: APPNAME
-  namespace: APPNAMESPACE
+  name: status-api
+  namespace: apps
 spec:
   ingressClassName: nginx
   rules:
-    - host: APP_DOMAIN
+    - host: status.ciceley.cc
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: APPNAME
+                name: status-api
                 port:
                   number: 80
