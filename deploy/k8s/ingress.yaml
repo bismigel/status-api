@@ -6,7 +6,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: status.ciceley.cc
+    - host: status.bismigel.dev
       http:
         paths:
           - path: /
