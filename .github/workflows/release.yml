@@ -49,7 +49,7 @@ jobs:
         run: |
           IMAGE="${{ steps.vars.outputs.image }}"
           TAG="${{ steps.vars.outputs.tag }}"
-          FILE="deploy/k8s/deployment.yaml"
+          FILE="deploy/base/deployment.yaml"
           sed -i -E "s#image: ${IMAGE}:[^ ]*#image: ${IMAGE}:${TAG}#" "$FILE"
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
