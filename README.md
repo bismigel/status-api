@@ -1,67 +1,46 @@
 # status-api
 
-Template app for the Bakuran homelab. Everything needed to build and deploy is
-already wired: **CI → GHCR → ArgoCD**. You write the app; this repo handles the rest.
+## Why "Bakuran"
 
-## Quick start
+Bakuran is Tagalog for the yard or enclosure behind a house, from *bakod*, a
+fence. It is the space where things get built, repaired, and occasionally taken
+apart to see how they work. This small service is part of that backyard lab:
+personal, observable, and safe to break on purpose.
 
-1. Create a repo from this template (or copy it).
-2. Run the initializer to set your app's name/domain/port:
-   ```bash
-   ./scripts/init.sh myapp myapp.example.com 80
-   ```
-3. Replace the placeholder in `app/` and the `Dockerfile` with your real app.
-4. Push to `main` → CI builds an image, pushes to GHCR, and bumps the tag in
-   `deploy/k8s/deployment.yaml`.
-5. Ask ArgoCD to deploy it by adding `applications/sitaw/status-api.yaml` in
-   **`bakuran-gitops`** (see "Register with ArgoCD" below).
+A Go HTTP service backing `status.bismigel.dev`. It is deliberately small: a
+single JSON response and a health endpoint.
 
-## What's pre-wired
+## Endpoints
 
-| Concern | File |
+| Path | Response |
 | --- | --- |
-| Container image | `Dockerfile`, `.dockerignore` |
-| Kubernetes | `deploy/k8s/` (Namespace, Deployment, Service, Ingress) |
-| CI: PR build check | `.github/workflows/check.yml` |
-| CI: release (build+push+bump) | `.github/workflows/release.yml` |
-| Agent/LLM instructions | `AGENTS.md` |
+| `/` | JSON `{status, message, host}` |
+| `/healthz` | `ok` |
 
-## Register with ArgoCD
+`PORT` defaults to `8080`.
 
-In `bakuran-gitops`, add `applications/sitaw/status-api.yaml`:
+## Layout
 
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: status-api
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-  finalizers: [resources-finalizer.argocd.argoproj.io]
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/<owner>/<this-repo>
-    targetRevision: main
-    path: deploy/k8s
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: apps
-  syncPolicy:
-    automated: { prune: true, selfHeal: true }
-    syncOptions: [CreateNamespace=true]
+```text
+app/                      Go service
+deploy/base/              shared Deployment and Service
+deploy/overlays/prod/     production ingress for status.bismigel.dev
+deploy/overlays/staging/  staging overlay
 ```
 
-## Image & registry
+ArgoCD watches `deploy/overlays/prod` through
+`bakuran-gitops/applications/sitaw/status-api.yaml`. The image is built by
+GitHub Actions and pushed to GHCR.
 
-CI pushes `ghcr.io/<owner>/<repo>:main-<timestamp>-<sha>` and `:latest`.
-The first push creates a **private** package — make it public (or add an
-`imagePullSecrets` entry) so the cluster can pull it.
+## Local
 
-## Secrets
+```bash
+cd app
+go run .
+curl http://localhost:8080/
+```
 
-Never commit secrets. Cluster secrets come from **Bitwarden Secrets Manager via
-External Secrets Operator** (`ExternalSecret` referencing the `bitwarden`
-ClusterSecretStore). See `homelab-app-template` for the snippet. Sealed Secrets is
-no longer used.
+## Related
+
+- `bakuran-gitops`: ArgoCD Application.
+- `bakuran-infra`: hosts and edge.
