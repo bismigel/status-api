@@ -17,4 +17,9 @@ jobs:
         run: |
           curl -sSLo kustomize.tar.gz https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.5.0/kustomize_v5.5.0_linux_amd64.tar.gz
           tar xzf kustomize.tar.gz
-          ./kustomize build deploy/k8s >/dev/null && echo "manifests OK"
+          # deploy/k8s was split into base/ + overlays/ (2026-10-29); this line kept
+          # pointing at the old path, so the check had been failing on every run since.
+          # Validate both overlays, because prod is what actually deploys.
+          for d in deploy/overlays/prod deploy/overlays/staging; do
+            ./kustomize build "$d" >/dev/null && echo "manifests OK: $d"
+          done
