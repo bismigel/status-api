@@ -60,6 +60,12 @@ data:
           "interval_seconds": 300
         },
         {
+          "name": "sabnzbd",
+          "kind": "http_status",
+          "url": "http://sabnzbd.downloads.svc.cluster.local:8080/",
+          "expect_status": [200]
+        },
+        {
           "name": "forgejo",
           "kind": "http_status",
           "url": "http://forgejo.forgejo.svc.cluster.local:3000/api/healthz",
