@@ -1,0 +1,69 @@
+# What "this service works" means, per service.
+#
+# Each check exists because it can catch something the pod's Ready state cannot:
+# the two entries that would have caught 2026-11-02 are `arr_testall` (the arrs
+# could not authenticate to qBittorrent after its config came back without a
+# password) and `jellyfin_items` (Jellyfin was Ready and serving an empty /media).
+#
+# Intervals: cheap HTTP checks ride the global POLL_SECONDS; the expensive ones
+# (a real login to qBittorrent, a library count) declare longer intervals.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: status-api-checks
+data:
+  checks.json: |
+    {
+      "checks": [
+        {
+          "name": "kavita",
+          "kind": "http_status",
+          "url": "http://kavita.books.svc.cluster.local:5000/api/health",
+          "expect_status": [200]
+        },
+        {
+          "name": "radarr-download-clients",
+          "kind": "arr_testall",
+          "url": "http://radarr.media.svc.cluster.local:7878",
+          "api_key_env": "RADARR_API_KEY",
+          "interval_seconds": 300
+        },
+        {
+          "name": "sonarr-download-clients",
+          "kind": "arr_testall",
+          "url": "http://sonarr.media.svc.cluster.local:8989",
+          "api_key_env": "SONARR_API_KEY",
+          "interval_seconds": 300
+        },
+        {
+          "name": "prowlarr-indexers",
+          "kind": "json_count",
+          "url": "http://prowlarr.media.svc.cluster.local:9696/api/v1/indexer",
+          "api_key_env": "PROWLARR_API_KEY",
+          "min_count": 1,
+          "interval_seconds": 120
+        },
+        {
+          "name": "qbittorrent-login",
+          "kind": "qbt_login",
+          "url": "http://qbittorrent.downloads.svc.cluster.local:8080",
+          "user_env": "QBT_USER",
+          "pass_env": "QBT_PASS",
+          "interval_seconds": 300
+        },
+        {
+          "name": "jellyfin-library",
+          "kind": "jellyfin_items",
+          "url": "http://jellyfin.default.svc.cluster.local:8096",
+          "api_key_env": "JELLYFIN_API_KEY",
+          "min_count": 1,
+          "interval_seconds": 300
+        },
+        {
+          "name": "forgejo",
+          "kind": "http_status",
+          "url": "http://forgejo.forgejo.svc.cluster.local:3000/api/healthz",
+          "expect_status": [200]
+        }
+      ]
+    }
