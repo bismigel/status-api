@@ -36,6 +36,32 @@ func TestHTTPStatusBothDirections(t *testing.T) {
 	}
 }
 
+// A service that is GONE (pod scaled to zero, crashloop) must be reported as
+// failing, and must fail fast. The qBittorrent regression on 2026-11-02 showed the
+// nasty variant: a blocked path produces a timeout, not an error code, so if a
+// transport failure were treated as "no answer yet" the page would stay green while
+// the check never completed.
+func TestHTTPStatusTransportFailureFailsFast(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	url := srv.URL
+	srv.Close() // nothing is listening on that port any more
+
+	r := runner() // 1s client timeout
+	start := time.Now()
+	ok, msg := r.evaluate(context.Background(), Check{Kind: "http_status", URL: url})
+	if ok {
+		t.Fatal("closed port reported as healthy")
+	}
+	if msg == "" {
+		t.Fatal("failure reported with an empty message - nothing to put on the page")
+	}
+	if elapsed := time.Since(start); elapsed > 900*time.Millisecond {
+		t.Fatalf("closed port took %s to report; it should fail on connection refused", elapsed)
+	}
+}
+
 func TestArrTestAllBothDirections(t *testing.T) {
 	var body string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
