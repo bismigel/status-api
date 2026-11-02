@@ -64,6 +64,11 @@ spec:
             capabilities: { drop: ["ALL"] }
             readOnlyRootFilesystem: true
             runAsNonRoot: true
+            # The image's USER is the named account `nonroot`, which kubelet cannot
+            # verify — "container has runAsNonRoot and image has non-numeric user".
+            # distroless nonroot is 65532, so state it numerically.
+            runAsUser: 65532
+            runAsGroup: 65532
           resources:
             requests:
               cpu: "50m"
