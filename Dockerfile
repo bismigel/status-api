@@ -1,8 +1,8 @@
-# status-api — tiny Go API (status + message). Multi-stage build.
+# status-api — one place that checks each service properly. Multi-stage build.
 FROM golang:1.23-alpine AS build
 WORKDIR /src
 COPY app/go.mod ./
-COPY app/main.go ./
+COPY app/main.go app/checks.go ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/status-api .
 
 FROM gcr.io/distroless/static-debian12

@@ -13,6 +13,13 @@ spec:
     metadata:
       labels:
         app: status-api
+      annotations:
+        # Scraped in-cluster on the metrics port. The Ingress routes only the public
+        # port (80 -> 8080), so /metrics is not reachable from the internet at all —
+        # no credentials needed on the scrape path, and nothing to leak.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+        prometheus.io/path: "/metrics"
     spec:
       # Two replicas are only HA if they sit on two nodes. Both landed on sitaw-amd,
       # so losing that node took the whole service down until the scheduler found room.
@@ -30,19 +37,33 @@ spec:
           image: ghcr.io/bismigel/status-api:main-20261012-003108-7fb799e
           imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - { name: http, containerPort: 8080 }
+            - { name: metrics, containerPort: 9091 }
+          env:
+            - { name: CHECKS_FILE, value: /etc/status/checks.json }
+            - { name: POLL_SECONDS, value: "60" }
+            # Not a secret: the qBittorrent WebUI user is always this.
+            - { name: QBT_USER, value: admin }
+          envFrom:
+            - secretRef:
+                name: status-api-checks-secret
+          volumeMounts:
+            - { name: checks, mountPath: /etc/status, readOnly: true }
+          # Probes hit /healthz, never /: a backend being down is the page's job to
+          # report, not a reason to restart this pod (and a restart would not fix it).
           readinessProbe:
-            httpGet:
-              path: /
-              port: 8080
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
-            httpGet:
-              path: /
-              port: 8080
+            httpGet: { path: /healthz, port: http }
             initialDelaySeconds: 10
             periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
           resources:
             requests:
               cpu: "50m"
@@ -50,3 +71,7 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
+      volumes:
+        - name: checks
+          configMap:
+            name: status-api-checks

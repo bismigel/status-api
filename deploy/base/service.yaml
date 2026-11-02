@@ -6,6 +6,10 @@ spec:
   selector:
     app: status-api
   ports:
-    - port: 80
+    - name: metrics
+      port: 9091
+      targetPort: metrics
+    - name: http
+      port: 80
       targetPort: 8080
   type: ClusterIP
