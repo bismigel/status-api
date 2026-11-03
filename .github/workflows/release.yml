@@ -44,15 +44,41 @@ jobs:
           docker push "$IMAGE:$TAG"
           docker push "$IMAGE:latest"
 
-      - name: Bump image tag in manifests
+      # A release used to `git push` straight to main and died on GH013 ("changes
+      # must be made through a pull request"). The bot now does what everything else
+      # in this estate does: opens a PR and merges it.
+      #
+      # If the merge is refused, the image is already published and the branch is left
+      # in place, so the deploy is one click rather than a failed release.
+      - name: Bump image tag in manifests (via PR)
         if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           IMAGE="${{ steps.vars.outputs.image }}"
           TAG="${{ steps.vars.outputs.tag }}"
           FILE="deploy/base/deployment.yaml"
+          BRANCH="release/${TAG}"
+
           sed -i -E "s#image: ${IMAGE}:[^ ]*#image: ${IMAGE}:${TAG}#" "$FILE"
+          if git diff --quiet -- "$FILE"; then
+            echo "manifest already points at ${TAG}; nothing to deploy"
+            exit 0
+          fi
+
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
-          git add "$FILE"
-          git diff --cached --quiet || git commit -m "chore: deploy ${TAG}"
-          git push
+          git checkout -b "$BRANCH"
+          git commit -m "chore: deploy ${TAG}" -- "$FILE"
+          git push origin "$BRANCH"
+
+          gh pr create --base main --head "$BRANCH" \
+            --title "chore: deploy ${TAG}" \
+            --body "Automated image bump to ${TAG} by the release workflow (run ${{ github.run_id }})."
+
+          if gh pr merge "$BRANCH" --squash --delete-branch; then
+            echo "deployed ${TAG}"
+          else
+            echo "::warning::image ${TAG} published, but the manifest PR needs a human merge"
+          fi
