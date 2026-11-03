@@ -34,7 +34,7 @@ spec:
       containers:
         - name: status-api
           # The tag is bumped automatically by .github/workflows/release.yml.
-          image: ghcr.io/bismigel/status-api:main-20261103-012630-40a5873
+          image: ghcr.io/bismigel/status-api:main-20261103-022349-f14e1d5
           imagePullPolicy: Always
           ports:
             - { name: http, containerPort: 8080 }
