@@ -4,7 +4,10 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - "deploy/k8s/**" # manifest bumps committed below must not re-trigger
+      # The bump below merges with GITHUB_TOKEN, which does not re-trigger
+      # workflows. This is for a human merging such a PR: without it, every
+      # release bump would start another release.
+      - "deploy/**"
       - "**.md"
   workflow_dispatch: {}
 
@@ -17,6 +20,7 @@ jobs:
     permissions:
       contents: write
       packages: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
