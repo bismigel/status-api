@@ -1,18 +1,3 @@
-# What "this service works" means, per service.
-#
-# Each check exists because it can catch something the pod's Ready state cannot:
-# the two entries that would have caught 2026-11-02 are `arr_testall` (the arrs
-# could not authenticate to qBittorrent after its config came back without a
-# password) and `jellyfin_items` (Jellyfin was Ready and serving an empty /media).
-#
-# Intervals: cheap HTTP checks ride the global POLL_SECONDS; the expensive ones
-# (a real login to qBittorrent, a library count) declare longer intervals.
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: status-api-checks
-data:
-  checks.json: |
     {
       "checks": [
         {

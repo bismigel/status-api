@@ -3,5 +3,15 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
-  - configmap-checks.yaml
   - external-secret.yaml
+
+# The checks live in a generator, not a plain ConfigMap, for one reason: the generator
+# appends a content hash to the name, which kustomize then rewrites in the Deployment's
+# volume reference. Editing checks.json therefore changes the pod template and rolls the
+# pods. With a fixed name the edit was invisible - the app reads the file at startup, so
+# a new check did nothing until somebody thought to restart it (2026-11-02: the sabnzbd
+# check sat unused for two hours).
+configMapGenerator:
+  - name: status-api-checks
+    files:
+      - checks.json
