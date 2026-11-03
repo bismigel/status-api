@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "America/Toronto",
+  "schedule": ["before 6am on monday"],
+  "automerge": false,
+  "dependencyDashboard": true,
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 5,
+  "pinDigests": true,
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "non-major updates"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["major"]
+    }
+  ]
+}
