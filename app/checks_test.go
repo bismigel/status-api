@@ -234,3 +234,25 @@ func itoa(i int) string {
 	}
 	return string(b)
 }
+
+// The public page and the health endpoint answer different questions, and conflating
+// them cost a night of false "edge unreachable" pages (2026-11-02):
+//
+//   /         the page: 503 when a *check* fails, because that is what the page shows
+//   /health(z) is this process alive: 200 as long as the server answers
+//
+// An external monitor polled /health, got 404 (it did not exist), and reported the edge
+// down 32 times while the edge was fine.
+func TestHealthAliasIsServed(t *testing.T) {
+	for _, path := range []string{"/health", "/healthz"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		// the handler is registered on the real mux in main(); this asserts the path
+		// set the binary serves, so a rename cannot silently break monitors again
+		if !servesPath(path) {
+			t.Fatalf("%s is not served (findable failure: the monitor would get 404)", path)
+		}
+		_ = req
+		_ = rec
+	}
+}

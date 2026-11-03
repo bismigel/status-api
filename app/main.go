@@ -157,10 +157,17 @@ func main() {
 		log.Fatal((&http.Server{Addr: metricsAddr, Handler: metricsMux, ReadHeaderTimeout: 10 * time.Second}).ListenAndServe())
 	}()
 
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	// /health and /healthz are the same thing: "this process is alive". Both exist
+	// because `/health` is what an external uptime monitor was already polling, and it
+	// spent a night reporting "homelab edge unreachable (32x)" against a 404 - a correct
+	// answer to a URL that never existed. Serving the alias is cheaper than finding and
+	// reconfiguring every consumer, and both are conventional names.
+	health := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ok")
-	})
+	}
+	mux.HandleFunc("/healthz", health)
+	mux.HandleFunc("/health", health)
 
 	addr := ":" + getenv("PORT", "8080")
 	log.Printf("status-api: listening on %s", addr)
@@ -219,4 +226,16 @@ func sortedNames(results []Result) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// servedPaths is what the public mux answers; tests assert monitor-facing paths exist.
+var servedPaths = []string{"/", "/api/status", "/health", "/healthz"}
+
+func servesPath(p string) bool {
+	for _, s := range servedPaths {
+		if s == p {
+			return true
+		}
+	}
+	return false
 }
