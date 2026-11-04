@@ -23,8 +23,24 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
+
+// heartbeatHandler records "the outside witness is alive". Extracted from main so the
+// method rejection is testable: a handler whose bad path is unreachable from a test is
+// a handler whose bad path is unverified.
+func heartbeatHandler(at *int64) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost && r.Method != http.MethodGet {
+			w.Header().Set("Allow", "POST, GET")
+			http.Error(w, "POST or GET", http.StatusMethodNotAllowed)
+			return
+		}
+		atomic.StoreInt64(at, time.Now().Unix())
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
 
 func main() {
 	checksFile := getenv("CHECKS_FILE", "/etc/status/checks.json")
@@ -79,6 +95,20 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(out)
 	})
+
+	// The router's dead-man switch POSTs here every five minutes. It is the only
+	// signal in the estate that originates OUTSIDE the cluster, so its staleness is
+	// the one thing that can tell a human "the witness itself has stopped" — the
+	// heartbeat already pages when the cluster is gone, but nothing paged when the
+	// heartbeat stopped (its proof-of-life is a weekly Telegram message, and a human
+	// has to notice the absence).
+	//
+	// Unauthenticated on purpose, and the trade is small: forging it can only delay
+	// detection, and it proves nothing else. The alternative — a shared secret on the
+	// router and in the cluster — adds a credential to the one host whose state is not
+	// declared anywhere, which is how the last three secrets became manual.
+	var heartbeatAt int64 // unix seconds; 0 means "never heard from it"
+	mux.HandleFunc("/api/heartbeat", heartbeatHandler(&heartbeatAt))
 
 	mux.HandleFunc("/api/detail", basicAuth(func(w http.ResponseWriter, r *http.Request) {
 		results := runner.Snapshot()
@@ -138,6 +168,13 @@ func main() {
 		fmt.Fprintln(w, "# HELP status_api_checks_failing checks currently failing")
 		fmt.Fprintln(w, "# TYPE status_api_checks_failing gauge")
 		fmt.Fprintf(w, "status_api_checks_failing %d\n", failing)
+		// Emitted only once the router has reported: an absent series means "no witness
+		// yet", which should not look like "stale witness" on the first deploy.
+		if hb := atomic.LoadInt64(&heartbeatAt); hb > 0 {
+			fmt.Fprintln(w, "# HELP router_heartbeat_last_seen_timestamp_seconds unix time the router last reported")
+			fmt.Fprintln(w, "# TYPE router_heartbeat_last_seen_timestamp_seconds gauge")
+			fmt.Fprintf(w, "router_heartbeat_last_seen_timestamp_seconds %d\n", hb)
+		}
 		fmt.Fprintln(w, "# HELP status_api_overall 1 when every check passes")
 		fmt.Fprintln(w, "# TYPE status_api_overall gauge")
 		if failing == 0 {
