@@ -256,3 +256,38 @@ func TestHealthAliasIsServed(t *testing.T) {
 		_ = rec
 	}
 }
+
+// The router's heartbeat is the only signal in the estate that comes from outside the
+// cluster, so its handler must do exactly two things: record the time, and refuse
+// anything that is not a heartbeat. Both directions, because a handler that accepts
+// everything would make a stale witness invisible — the failure this exists to catch.
+func TestHeartbeatBothDirections(t *testing.T) {
+	var at int64
+	h := heartbeatHandler(&at)
+
+	rec := httptest.NewRecorder()
+	h(rec, httptest.NewRequest(http.MethodPost, "/api/heartbeat", nil))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("POST: got %d, want 204", rec.Code)
+	}
+	if at == 0 {
+		t.Fatal("POST did not record a timestamp — the gauge would stay absent forever")
+	}
+
+	first := at
+	time.Sleep(1100 * time.Millisecond)
+	rec = httptest.NewRecorder()
+	h(rec, httptest.NewRequest(http.MethodGet, "/api/heartbeat", nil))
+	if at <= first {
+		t.Fatalf("GET did not advance the timestamp: %d -> %d", first, at)
+	}
+
+	rec = httptest.NewRecorder()
+	h(rec, httptest.NewRequest(http.MethodDelete, "/api/heartbeat", nil))
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("DELETE: got %d, want 405", rec.Code)
+	}
+	if rec.Header().Get("Allow") == "" {
+		t.Fatal("405 without an Allow header tells the caller nothing")
+	}
+}
