@@ -55,6 +55,12 @@
           "kind": "http_status",
           "url": "http://forgejo.forgejo.svc.cluster.local:3000/api/healthz",
           "expect_status": [200]
+        },
+        {
+          "name": "alertmanager",
+          "kind": "http_status",
+          "url": "http://alertmanager.monitoring.svc.cluster.local:9093/-/healthy",
+          "expect_status": [200]
         }
       ]
     }
