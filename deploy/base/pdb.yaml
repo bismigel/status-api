@@ -1,0 +1,15 @@
+# Two replicas, and a drain could evict both — the same gap the audit found in ArgoCD and
+# the ingress controllers. `minAvailable: 1` keeps the status endpoint answering through a
+# node reboot, which is the point of the service: it is what tells a human the lab is down.
+#
+# Namespace is not set here; the prod/staging overlays add it.
+# Found by homelab-context story 6.3 (`ops/workloads --strict`), 2026-11-04.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: status-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: status-api
