@@ -1,0 +1,38 @@
+# CI on the estate's own hardware (ADR 0015). Same two checks as the GitHub workflow, with buildah instead of docker
+# because the runner has no daemon, and the runner's own kustomize instead of downloading one.
+name: checks
+
+on:
+  pull_request:
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: in-cluster
+    timeout-minutes: 20
+    steps:
+      # One step, buffered: act_runner fails long steps with exit 141 (SIGPIPE) when a command writes to its log pipe
+      # after the reader has moved on. Same fix as bismigel-site and bakuran-gitops.
+      - name: Clone, build the image, render the overlays
+        env:
+          REPO_READ_TOKEN: ${{ secrets.REPO_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          exec 3>&1
+          {
+            GIT_TERMINAL_PROMPT=0 git clone --quiet --depth 1 \
+              "http://bismigel:${REPO_READ_TOKEN}@forgejo.forgejo.svc.cluster.local:3000/bismigel/status-api.git" .
+            export BUILDAH_ISOLATION=chroot TMPDIR=/var/lib/containers/tmp
+            mkdir -p "$TMPDIR"
+            buildah --storage-driver vfs bud -q -t status-api:check .
+            echo "image builds"
+            # deploy/k8s is base/ + overlays/ since 2026-10-29; prod is what actually deploys.
+            for d in deploy/overlays/prod deploy/overlays/staging; do
+              kustomize build "$d" >/dev/null && echo "manifests OK: $d"
+            done
+          } > /tmp/check.log 2>&1 || { echo "check failed:"; tail -40 /tmp/check.log >&3; exit 1; }
+          tail -4 /tmp/check.log >&3
